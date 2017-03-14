@@ -6,7 +6,7 @@
 package weixin
 
 import (
-	"fmt"
+	"errors"
 )
 
 type UnifiedOrder struct {
@@ -30,4 +30,52 @@ type UnifiedOrder struct {
 	TradeType      string `json:"trade_type" xml:"trade_type"`             // R. 交易类型(APP/)
 	LimitPay       string `json:"limit_pay" xml:"limit_pay"`               // O. 指定支付方式(no_credit: 不能使用信用卡支付)
 	OpenID         string `json:"open_id" xml:"open_id"`                   // O. 用户标识(trade_type为JSAPI时，此参数必传)
+}
+
+func (this *UnifiedOrder) isWAP() bool {
+	return this.TradeType == "JSAPI"
+}
+
+func (this *UnifiedOrder) PreSignCheck() (err error) {
+	if this.AppId == "" {
+		err = errors.New("Missing required parameters: appid")
+		return
+	}
+	if this.MchId == "" {
+		err = errors.New("Missing required parameters: mch_id")
+		return
+	}
+	if this.Body == "" {
+		err = errors.New("Missing required parameters: body")
+		return
+	}
+	if this.NonceStr == "" {
+		err = errors.New("Missing required parameters: nonce_str")
+		return
+	}
+	if this.OutTradeNo == "" {
+		err = errors.New("Missing required parameters: out_trade_no")
+		return
+	}
+	if this.TotalFee == "" {
+		err = errors.New("Missing required parameters: total_fee")
+		return
+	}
+	if this.SPBillCreateIp == "" {
+		err = errors.New("Missing required parameters: spbill_create_ip")
+		return
+	}
+	if this.NotifyURL == "" {
+		err = errors.New("Missing required parameters: notify_url")
+		return
+	}
+	if this.TradeType == "" {
+		err = errors.New("Missing required parameters: trade_type")
+		return
+	}
+	if this.isWAP() && this.OpenID == "" {
+		err = errors.New("Missing required paramters for WAP payment: openid")
+		return
+	}
+	return
 }
