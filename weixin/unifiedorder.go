@@ -6,9 +6,13 @@
 package weixin
 
 import (
+	"bytes"
 	"encoding/json"
+	"encoding/xml"
 	"errors"
 	"fmt"
+	"net/http"
+	"strings"
 )
 
 type UnifiedOrderPayload struct {
@@ -83,14 +87,32 @@ func (this *UnifiedOrderPayload) PreSignCheck() (err error) {
 }
 
 func UnifiedOrder(payload *UnifiedOrderPayload, secretKey string) string {
-	bytes, _ := json.Marshal(payload)
+	bs, _ := json.Marshal(payload)
 	pm := make(map[string]string)
-	err := json.Unmarshal(bytes, &pm)
+	err := json.Unmarshal(bs, &pm)
 	if err != nil {
 		fmt.Println(err)
 		return ""
 	}
 	sign := Sign(pm, secretKey)
-	fmt.Println(sign)
+	payload.Sign = sign
+	payload.SignType = "MD5"
+	XML, _ := xml.Marshal(payload)
+	x := strings.Replace(string(XML), "UnifiedOrderPayload", "xml", 2)
+	bytesXML := []byte(x)
+	req, err := http.NewRequest("POST", "https://api.mch.weixin.qq.com/pay/unifiedorder", bytes.NewReader(bytesXML))
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
+	req.Header.Set("Accept", "application/xml")
+	req.Header.Set("Content-Type", "application/xml;charset=utf-8")
+	c := http.Client{}
+	resp, resp_err := c.Do(req)
+	if resp_err != nil {
+		fmt.Println(resp_err)
+		return ""
+	}
+	fmt.Println(resp)
 	return ""
 }
