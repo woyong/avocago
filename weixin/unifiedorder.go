@@ -12,7 +12,6 @@ import (
 	"errors"
 	"io/ioutil"
 	"net/http"
-	"strings"
 )
 
 const (
@@ -120,12 +119,10 @@ func UnifiedOrder(payload *UnifiedOrderPayload, secretKey string) (response Unif
 	sign := Sign(pm, secretKey)
 	payload.Sign = sign
 	XML, _ := xml.Marshal(payload)
-	x := strings.Replace(string(XML), "UnifiedOrderPayload", "xml", 2)
-	bytesXML := []byte(x)
 	req, err2 := http.NewRequest(
 		"POST",
 		UNIFIEDORDER_URL,
-		bytes.NewReader(bytesXML))
+		bytes.NewReader(XML))
 	if err2 != nil {
 		err = err2
 		return
