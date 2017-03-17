@@ -10,10 +10,13 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
+)
+
+const (
+	UNIFIEDORDER_URL = "https://api.mch.weixin.qq.com/pay/unifiedorder"
 )
 
 type UnifiedOrderPayload struct {
@@ -87,41 +90,64 @@ func (this *UnifiedOrderPayload) PreSignCheck() (err error) {
 	return
 }
 
-func UnifiedOrder(payload *UnifiedOrderPayload, secretKey string) string {
-	preSignErr := payload.PreSignCheck()
-	if preSignErr != nil {
-		fmt.Println(preSignErr)
-		return ""
+type UnifiedOrderResp struct {
+	ReturnCode string `xml:"return_code"`
+	ReturnMsg  string `xml:"return_msg"`
+	AppId      string `xml:"appid"`
+	MchId      string `xml:"mch_id"`
+	NonceStr   string `xml:"nonce_str"`
+	Sign       string `xml:"sign"`
+	ResultCode string `xml:"result_code"`
+	PrepayId   string `xml:"prepay_id"`
+	TradeType  string `xml:"trade_type"`
+}
+
+func (this *UnifiedOrderResp) IsSuccess() bool {
+	return this.ResultCode == "SUCCESS"
+}
+
+func UnifiedOrder(payload *UnifiedOrderPayload, secretKey string) (response UnifiedOrderResp, err error) {
+	if preSignErr := payload.PreSignCheck(); preSignErr != nil {
+		err = preSignErr
+		return
 	}
 	bs, _ := json.Marshal(payload)
 	pm := make(map[string]interface{})
-	err := json.Unmarshal(bs, &pm)
-	if err != nil {
-		fmt.Println(err)
-		return ""
+	if err1 := json.Unmarshal(bs, &pm); err1 != nil {
+		err = err1
+		return
 	}
 	sign := Sign(pm, secretKey)
 	payload.Sign = sign
-	//payload.SignType = "MD5"
 	XML, _ := xml.Marshal(payload)
 	x := strings.Replace(string(XML), "UnifiedOrderPayload", "xml", 2)
 	bytesXML := []byte(x)
-	fmt.Println(x)
-	req, err := http.NewRequest("POST", "https://api.mch.weixin.qq.com/pay/unifiedorder", bytes.NewReader(bytesXML))
-	if err != nil {
-		fmt.Println(err)
-		return ""
+	req, err2 := http.NewRequest(
+		"POST",
+		UNIFIEDORDER_URL,
+		bytes.NewReader(bytesXML))
+	if err2 != nil {
+		err = err2
+		return
 	}
 	req.Header.Set("Accept", "application/xml")
 	req.Header.Set("Content-Type", "application/xml;charset=utf-8")
 	c := http.Client{}
-	resp, respErr := c.Do(req)
-	if respErr != nil {
-		fmt.Println(respErr)
-		return ""
+	resp, err3 := c.Do(req)
+	if err3 != nil {
+		err = err3
+		return
 	}
 	defer resp.Body.Close()
 	body, _ := ioutil.ReadAll(resp.Body)
-	fmt.Println(string(body))
-	return ""
+	response = UnifiedOrderResp{}
+	if err4 := xml.Unmarshal(body, &response); err4 != nil {
+		err = err4
+		return
+	}
+	if !response.IsSuccess() {
+		err = errors.New(response.ReturnMsg)
+		return
+	}
+	return
 }
