@@ -11,6 +11,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strings"
 )
@@ -27,7 +28,7 @@ type UnifiedOrderPayload struct {
 	Attach         string `json:"attach,omitempty" xml:"attach,omitempty"`                     // O. 附加数据
 	OutTradeNo     string `json:"out_trade_no,omitempty" xml:"out_trade_no,omitempty"`         // R. 商户交易号
 	FeeType        string `json:"fee_type,omitempty" xml:"fee_type,omitempty"`                 // O. 货币类型
-	TotalFee       string `json:"total_fee,omitempty" xml:"total_fee,omitempty"`               // R. 订单总金额(分)
+	TotalFee       int    `json:"total_fee,omitempty" xml:"total_fee,omitempty"`               // R. 订单总金额(分)
 	SPBillCreateIp string `json:"spbill_create_ip,omitempty" xml:"spbill_create_ip,omitempty"` // R. 终端IP
 	TimeStart      string `json:"time_start,omitempty" xml:"time_start,omitempty"`             // O. 订单生成时间(yyyyMMddHHmmss)
 	TimeExpire     string `json:"time_expire,omitempty" xml:"time_expire,omitempty"`           // O. 订单失效时间(yyyyMMddHHmmss)
@@ -63,7 +64,7 @@ func (this *UnifiedOrderPayload) PreSignCheck() (err error) {
 		err = errors.New("Missing required parameters: out_trade_no")
 		return
 	}
-	if this.TotalFee == "" {
+	if this.TotalFee == 0 {
 		err = errors.New("Missing required parameters: total_fee")
 		return
 	}
@@ -87,8 +88,13 @@ func (this *UnifiedOrderPayload) PreSignCheck() (err error) {
 }
 
 func UnifiedOrder(payload *UnifiedOrderPayload, secretKey string) string {
+	preSignErr := payload.PreSignCheck()
+	if preSignErr != nil {
+		fmt.Println(preSignErr)
+		return ""
+	}
 	bs, _ := json.Marshal(payload)
-	pm := make(map[string]string)
+	pm := make(map[string]interface{})
 	err := json.Unmarshal(bs, &pm)
 	if err != nil {
 		fmt.Println(err)
@@ -96,10 +102,11 @@ func UnifiedOrder(payload *UnifiedOrderPayload, secretKey string) string {
 	}
 	sign := Sign(pm, secretKey)
 	payload.Sign = sign
-	payload.SignType = "MD5"
+	//payload.SignType = "MD5"
 	XML, _ := xml.Marshal(payload)
 	x := strings.Replace(string(XML), "UnifiedOrderPayload", "xml", 2)
 	bytesXML := []byte(x)
+	fmt.Println(x)
 	req, err := http.NewRequest("POST", "https://api.mch.weixin.qq.com/pay/unifiedorder", bytes.NewReader(bytesXML))
 	if err != nil {
 		fmt.Println(err)
@@ -108,11 +115,13 @@ func UnifiedOrder(payload *UnifiedOrderPayload, secretKey string) string {
 	req.Header.Set("Accept", "application/xml")
 	req.Header.Set("Content-Type", "application/xml;charset=utf-8")
 	c := http.Client{}
-	resp, resp_err := c.Do(req)
-	if resp_err != nil {
-		fmt.Println(resp_err)
+	resp, respErr := c.Do(req)
+	if respErr != nil {
+		fmt.Println(respErr)
 		return ""
 	}
-	fmt.Println(resp)
+	defer resp.Body.Close()
+	body, _ := ioutil.ReadAll(resp.Body)
+	fmt.Println(string(body))
 	return ""
 }
