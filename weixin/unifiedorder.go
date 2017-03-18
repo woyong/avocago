@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	UNIFIEDORDER_URL = "https://api.mch.weixin.qq.com/pay/unifiedorder"
+	UnifiedOrderURL = "https://api.mch.weixin.qq.com/pay/unifiedorder"
 )
 
 type UnifiedOrderPayload struct {
@@ -105,6 +105,33 @@ func (this *UnifiedOrderResp) IsSuccess() bool {
 	return this.ResultCode == "SUCCESS"
 }
 
+func (this *UnifiedOrderResp) JSAPI(secretKey string) map[string]interface{} {
+	results := map[string]interface{}{
+		"appId":     this.AppId,
+		"timeStamp": ChinaTimestamp(),
+		"nonceStr":  NonceStr(),
+		"package":   "prepay_id=" + this.PrepayId,
+		"signType":  "MD5",
+	}
+	sign := Sign(results, secretKey)
+	results["paySign"] = sign
+	return results
+}
+
+func (this *UnifiedOrderResp) APP(secretKey string) map[string]interface{} {
+	results := map[string]interface{}{
+		"appid":     this.AppId,
+		"partnerid": this.MchId,
+		"package":   "Sign=WXPay",
+		"timestamp": ChinaTimestamp(),
+		"noncestr":  NonceStr(),
+		"prepayid":  this.PrepayId,
+	}
+	sign := Sign(results, secretKey)
+	results["sign"] = sign
+	return results
+}
+
 func UnifiedOrder(payload *UnifiedOrderPayload, secretKey string) (response UnifiedOrderResp, err error) {
 	if preSignErr := payload.PreSignCheck(); preSignErr != nil {
 		err = preSignErr
@@ -121,7 +148,7 @@ func UnifiedOrder(payload *UnifiedOrderPayload, secretKey string) (response Unif
 	XML, _ := xml.Marshal(payload)
 	req, err2 := http.NewRequest(
 		"POST",
-		UNIFIEDORDER_URL,
+		UnifiedOrderURL,
 		bytes.NewReader(XML))
 	if err2 != nil {
 		err = err2
