@@ -66,7 +66,7 @@ func (this *RefundPayload) PreSignCheck() (err error) {
 	return
 }
 
-func Refund(payload *RefundPayload, secretKey string, cert string, key string) (response RefundResponse, err error) {
+func refund(payload *RefundPayload, secretKey string, cert string, key string) (response RefundResponse, err error) {
 	if preSignErr := payload.PreSignCheck(); preSignErr != nil {
 		err = preSignErr
 		return

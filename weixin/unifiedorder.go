@@ -163,7 +163,7 @@ func (this *UnifiedOrderResp) Native() string {
 	return this.CodeURL
 }
 
-func UnifiedOrder(payload *UnifiedOrderPayload, secretKey string) (response UnifiedOrderResp, err error) {
+func unifiedorder(payload *UnifiedOrderPayload, secretKey string) (response UnifiedOrderResp, err error) {
 	if preSignErr := payload.PreSignCheck(); preSignErr != nil {
 		err = preSignErr
 		return
