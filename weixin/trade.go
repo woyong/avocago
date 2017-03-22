@@ -5,14 +5,14 @@ type WeTrader interface {
 	WeRefund() (RefundPayload, string, string, string)
 }
 
-func UnifiedOrder(trade *WeixinTrader) (resp UnifiedOrderResponse, err error) {
+func UnifiedOrder(trade WeTrader) (resp UnifiedOrderResp, err error) {
 	payload, sk := trade.WeUnifiedOrder()
-	resp, err = unifiedorder(payload, sk)
+	resp, err = unifiedorder(&payload, sk)
 	return
 }
 
-func Refund(trade *WeixinTrader) (resp RefundResponse, err error) {
-	payload, sk, cert, key = trade.WeRefund()
-	resp, err = refund(payload, sk, cert, key)
+func Refund(trade WeTrader) (resp RefundResponse, err error) {
+	payload, sk, cert, key := trade.WeRefund()
+	resp, err = refund(&payload, sk, cert, key)
 	return
 }
