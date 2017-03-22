@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 )
@@ -53,14 +54,19 @@ type RefundResponse struct {
 	CashFee             int    `xml:"cash_fee"`
 }
 
+func (this *RefundResponse) IsSuccess() bool {
+	return this.ReturnCode == "SUCCESS" && this.ResultCode == "SUCCESS"
+}
+
 func (this *RefundPayload) PreSignCheck() (err error) {
 	if this.AppID == "" {
 		err = errors.New("Missing required parameters: appid")
 		return
 	}
+	return
 }
 
-func Refund(payload *RefundPayload, secretKey string) (response RefundPayload, err error) {
+func Refund(payload *RefundPayload, secretKey string, cert string, key string) (response RefundResponse, err error) {
 	if preSignErr := payload.PreSignCheck(); preSignErr != nil {
 		err = preSignErr
 		return
@@ -85,6 +91,11 @@ func Refund(payload *RefundPayload, secretKey string) (response RefundPayload, e
 	req.Header.Set("Accept", "application/xml")
 	req.Header.Set("Content-Type", "application/xml;charset=utf-8")
 	c := http.Client{}
+	tlsConfig, err := NewTLSConfig(cert, key)
+	if err != nil {
+		return
+	}
+	c.Transport = &http.Transport{TLSClientConfig: tlsConfig}
 	resp, err3 := c.Do(req)
 	if err3 != nil {
 		err = err3
